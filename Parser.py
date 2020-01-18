@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader, Dataset, TensorDataset
 class Parser:
     PAD = '<pad>'
     UNIQUE = '<uuukkk>'
-    NUMBER = '<num>'
+    NUMBER = '<num>'  #just prepare if need to parse by words
 
     def __init__(self, filename):
         self.file_name = filename
@@ -27,8 +27,4 @@ class Parser:
         return data, max_len
 
 
-if __name__ == '__main__':
-    p = Parser('./Data/snli_1.0_train.jsonl')
-    dataset, max_len = p.Parse()
-    print("hi")
 
