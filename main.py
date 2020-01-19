@@ -12,6 +12,6 @@ if __name__ == '__main__':
     batch_size = 20
     output_dim = 3
     #todo - MODEL
-    #todo  - Iterate model
-    #todo - predict
+    #  - Iterate model
+    # - predict
 
