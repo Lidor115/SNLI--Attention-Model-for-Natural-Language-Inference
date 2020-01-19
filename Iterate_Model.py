@@ -97,6 +97,8 @@ def main():
     output_dim = 3
     encoder = Encode(len(F2I), embedding_dim, hidden_dim)
     model = SelfAttention(hidden_dim, output_dim, dropout_rate=0.2)
+    iterate_model(model, encoder, train_parser.DataLoader(batch_size, shuffle=True),
+                  dev_parser.DataLoader(batch_size, shuffle=True))
 
 
 if __name__ == "__main__":
