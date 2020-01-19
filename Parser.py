@@ -16,9 +16,9 @@ class Parser:
 
     def __init__(self, filename, F2I={}, L2I={}):
         self.file_name = filename
-        vocab ,self.sentences, self.labels,self.max_sentence = self.Parse()
+        vocab, self.sentences, self.labels, self.max_sentence = self.Parse()
         self.F2I = F2I if F2I else self.create_dict(vocab)
-        self.L2I = L2I if L2I else self.create_dict(self.labels)
+        self.L2I = L2I if L2I else self.create_dict(self.labels, should_pad=False)
         self.indexer_labels()
         self.indexer_sentences()
         self.sentence_padding()
@@ -39,17 +39,17 @@ class Parser:
             if gold_label == '-':
                 continue
             labels.append(gold_label)
-            if len(sent_1) > max_sentence_len or len(sent_2)>max_sentence_len:
+            if len(sent_1) > max_sentence_len or len(sent_2) > max_sentence_len:
                 max_sentence_len = max(len(sent_1), len(sent_2))
-            data.append([sent_1,sent_2])
+            data.append([sent_1, sent_2])
         #rare words
         for i in range(len(data)):
-            data[i][0]= [w if wordFreqDict[w] >20 else UNIQUE for w in data[i][0]]
-            data[i][1]= [w if wordFreqDict[w] >20 else UNIQUE for w in data[i][1]]
+            data[i][0]= [w if wordFreqDict[w] > 20 else UNIQUE for w in data[i][0]]
+            data[i][1]= [w if wordFreqDict[w] > 20 else UNIQUE for w in data[i][1]]
 
         return vocab,data, labels, max_sentence_len
 
-    def Parse_Line(self, line,wordFreqDict,vocab):
+    def Parse_Line(self, line, wordFreqDict, vocab):
         punctuation =set(string.punctuation)
         new_line =list()
         for word in line.split(' '):
@@ -61,10 +61,11 @@ class Parser:
         return new_line
 
     @staticmethod
-    def create_dict(vocab):
+    def create_dict(vocab, should_pad=True):
         data_dict = {f: i for i, f in enumerate(list(sorted(set(vocab))))}
-        data_dict[list(data_dict.keys())[0]] = len(data_dict)
-        data_dict[PAD] = 0
+        if should_pad:
+            data_dict[list(data_dict.keys())[0]] = len(data_dict)
+            data_dict[PAD] = 0
         return data_dict
 
     def get_F2I(self):

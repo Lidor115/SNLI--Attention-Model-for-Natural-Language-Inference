@@ -72,7 +72,7 @@ def evaluate(model, encoder, dev_set, loss_fn):
 def iterate_model(model, encoder, train_set, dev_set, lr=0.01, epochs=10):
     model_optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     encoder_optimizer = torch.optim.Adam(encoder.parameters(), lr=lr)
-    loss = nn.NLLLoss()
+    loss = nn.CrossEntropyLoss()
     for epoch in range(epochs):
         start_time = time.time()
         train_loss, train_acc, model = train(model, encoder, train_set, model_optimizer, encoder_optimizer, loss)
