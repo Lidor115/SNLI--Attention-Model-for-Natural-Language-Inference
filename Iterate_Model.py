@@ -6,12 +6,11 @@ from Model import Encode, SelfAttention
 from Parser import Parser
 
 
-def calc_batch_accuracy(predictions, labels, idx_to_label):
+def calc_batch_accuracy(predictions, labels):
     correct = wrong = 0
     for pred, label in zip(predictions, labels):
         if pred.argmax() == label:
-            if not idx_to_label[int(label)] == 'O':
-                correct += 1
+            correct += 1
         else:
             wrong += 1
     return correct / (correct + wrong)
@@ -37,42 +36,47 @@ def time_for_epoch(start, end):
     return minutes, seconds
 
 
-def train(model, train_set, optimizer, loss_fn, idx_to_label):
+def train(model, encoder, train_set, model_optimizer, encoder_optimizer, loss_fn):
     epoch_loss = 0
     epoch_acc = 0
     sum_examples = len(train_set)
     model.train()
-    for windows, labels in train_set:
-        optimizer.zero_grad()
-        predictions = model(windows)
+    for sentences, labels in train_set:
+        model_optimizer.zero_grad()
+        encoder_optimizer.zero_grad()
+        encoded = encoder(sentences[0], sentences[1])
+        predictions = model(encoded[0], encoded[1])
         loss = loss_fn(predictions, labels)
-        epoch_acc += calc_batch_accuracy(predictions, labels, idx_to_label)
+        epoch_acc += calc_batch_accuracy(predictions, labels)
         epoch_loss += loss
         loss.backward()
-        optimizer.step()
+        encoder_optimizer.step()
+        model_optimizer.step()
     return float(epoch_loss) / sum_examples, float(epoch_acc) / sum_examples, model
 
 
-def evaluate(model, dev_set, loss_fn, idx_to_label):
+def evaluate(model, encoder, dev_set, loss_fn):
     epoch_loss = 0
     epoch_acc = 0
     sum_examples = len(dev_set)
     model.eval()
-    for windows, labels in dev_set:
-        predictions = model(windows)
+    for sentences, labels in dev_set:
+        encoded = encoder(sentences[0], sentences[1])
+        predictions = model(encoded[0], encoded[1])
         loss = loss_fn(predictions, labels)
-        epoch_acc += calc_batch_accuracy(predictions, labels, idx_to_label)
+        epoch_acc += calc_batch_accuracy(predictions, labels)
         epoch_loss += loss
     return float(epoch_loss) / sum_examples, float(epoch_acc) / sum_examples
 
 
-def iterate_model(model, train_set, dev_set, idx_to_label, lr=0.01, epochs=10, msg=''):
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    loss = nn.CrossEntropyLoss()
+def iterate_model(model, encoder, train_set, dev_set, lr=0.01, epochs=10):
+    model_optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    encoder_optimizer = torch.optim.Adam(encoder.parameters(), lr=lr)
+    loss = nn.NLLLoss()
     for epoch in range(epochs):
         start_time = time.time()
-        train_loss, train_acc, model = train(model, train_set, optimizer, loss, idx_to_label)
-        dev_loss, dev_acc = evaluate(model, dev_set, loss, idx_to_label)
+        train_loss, train_acc, model = train(model, encoder, train_set, model_optimizer, encoder_optimizer, loss)
+        dev_loss, dev_acc = evaluate(model, encoder, dev_set, loss)
         end_time = time.time()
         epoch_mins, epoch_secs = time_for_epoch(start_time, end_time)
         print(f'Epoch: {epoch + 1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
@@ -83,15 +87,16 @@ def iterate_model(model, train_set, dev_set, idx_to_label, lr=0.01, epochs=10, m
 
 def main():
     train_parser = Parser('./Data/snli_1.0_train.jsonl')
-    data_train, max_len_train = train_parser.Parse()
-    dev_parser = Parser('./Data/snli_1.0_dev.jsonl')
-    data_dev, max_len_dev = dev_parser.Parse()
-    test_parser = Parser('./Data/snli_1.0_test.jsonl')
-    test_train, max_len_test = test_parser.Parse()
+    F2I = train_parser.get_F2I()
+    L2I = train_parser.get_L2I()
+    dev_parser = Parser('./Data/snli_1.0_dev.jsonl', F2I, L2I)
+    test_parser = Parser('./Data/snli_1.0_test.jsonl', F2I, L2I)
     embedding_dim = 300
-    hidden_dim_1 = 1000
+    hidden_dim = 1000
     batch_size = 20
     output_dim = 3
+    encoder = Encode(len(F2I), embedding_dim, hidden_dim)
+    model = SelfAttention(hidden_dim, output_dim, dropout_rate=0.2)
 
 
 if __name__ == "__main__":
