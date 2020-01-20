@@ -80,7 +80,6 @@ class Parser:
     def get_Labels(self):
         return self.labels
 
-
     def get_max_word_len(self):
         max_len = 0
         for word in self.F2I.keys():
@@ -91,9 +90,15 @@ class Parser:
     def indexer_sentences(self):
         for pair in self.sentences:
             for index, word in enumerate(pair[0]):
-                pair[0][index] = self.F2I[word]
+                if pair[0][index] in self.F2I:
+                    pair[0][index] = self.F2I[word]
+                else:
+                    pair[0][index] = self.F2I[UNIQUE]
             for index, word in enumerate(pair[1]):
-                pair[1][index] = self.F2I[word]
+                if pair[1][index] in self.F2I:
+                    pair[1][index] = self.F2I[word]
+                else:
+                    pair[1][index] = self.F2I[UNIQUE]
 
     def indexer_labels(self):
         for index, label in enumerate(self.labels):
