@@ -6,7 +6,9 @@ import torch.nn.functional as F
 class Encode(nn.Module):
     def __init__(self, vocab_size, embedding_dim, hidden_dim):
         super(Encode, self).__init__()
+        torch.manual_seed(3)
         self.embed = nn.Embedding(vocab_size, embedding_dim)
+        nn.init.uniform_(self.embed.weight, -1.0, 1.0)
         self.mlp = nn.Linear(embedding_dim, hidden_dim)
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim

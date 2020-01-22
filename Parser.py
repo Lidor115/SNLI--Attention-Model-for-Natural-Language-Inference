@@ -1,11 +1,10 @@
-import re
+
 import json
 import string
 from collections import defaultdict
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, Dataset, TensorDataset
 
 PAD = '<pad>'
 UNIQUE = '<unk>'
@@ -14,8 +13,9 @@ NUMBER = '<num>'  # just prepare if need to parse by words
 
 class Parser:
 
-    def __init__(self, filename, F2I={}, L2I={}):
+    def __init__(self, filename, F2I={}, L2I={}, length=None):
         self.file_name = filename
+        self.length = length
         vocab, self.sentences, self.labels, self.max_sentence = self.Parse()
         self.F2I = F2I if F2I else self.create_dict(vocab)
         self.L2I = L2I if L2I else self.create_dict(self.labels, should_pad=False)
@@ -30,11 +30,11 @@ class Parser:
         vocab.add(UNIQUE)
         max_sentence_len = -1
         wordFreqDict = defaultdict(lambda: 0)
-        file = open(self.file_name,'r')
+        file = open(self.file_name, 'r')
         for line in file:
             loader = json.loads(line)
-            sent_1 = self.Parse_Line(loader['sentence1'],wordFreqDict,vocab)
-            sent_2 = self.Parse_Line(loader['sentence2'],wordFreqDict,vocab)
+            sent_1 = self.Parse_Line(loader['sentence1'], wordFreqDict, vocab)
+            sent_2 = self.Parse_Line(loader['sentence2'], wordFreqDict, vocab)
             gold_label = loader['gold_label']
             if gold_label == '-':
                 continue
@@ -44,10 +44,10 @@ class Parser:
             data.append([sent_1, sent_2])
         #rare words
         for i in range(len(data)):
-            data[i][0]= [w if wordFreqDict[w] > 20 else UNIQUE for w in data[i][0]]
-            data[i][1]= [w if wordFreqDict[w] > 20 else UNIQUE for w in data[i][1]]
+            data[i][0] = [w if wordFreqDict[w] > 1 else UNIQUE for w in data[i][0]]
+            data[i][1] = [w if wordFreqDict[w] > 1 else UNIQUE for w in data[i][1]]
 
-        return vocab,data, labels, max_sentence_len
+        return vocab, data, labels, max_sentence_len
 
     def Parse_Line(self, line, wordFreqDict, vocab):
         punctuation =set(string.punctuation)
@@ -111,19 +111,9 @@ class Parser:
                 pair[0].append(word_index)
             while len(pair[1]) < self.max_sentence:
                 pair[1].append(word_index)
-
-    def prepare_list(self, sentence):
-        idx_list = []
-        if len(sentence) > self.max_sentence:
-            sentence = sentence[-self.max_sentence:]
-        for s in sentence:
-            if s in dict:
-                idx_list.append(self.F2I[s])
-            else:
-                idx_list.append(self.F2I[UNIQUE])
-        while len(idx_list) < self.max_sentence:
-            idx_list.append(self.F2I[PAD])
-        return idx_list
+        if self.length is not None:
+            for index, pair in enumerate(self.sentences):
+                self.sentences[index] = [pair[0][:self.length], pair[1][:self.length]]
 
     def DataLoader(self,batch_size, shuffle=True):
         sent_1 = []
@@ -140,8 +130,3 @@ class Parser:
         for index, batch in enumerate(batchs):
           batchs[index] = ((torch.LongTensor(np.asarray(batch[0][0])), torch.LongTensor(np.asarray(batch[0][1]))), torch.LongTensor(np.asarray(batch[1])))
         return batchs
-
-
-
-
-

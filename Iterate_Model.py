@@ -50,8 +50,8 @@ def train(model, encoder, train_set, model_optimizer, encoder_optimizer, loss_fn
         epoch_acc += calc_batch_accuracy(predictions, labels)
         epoch_loss += loss
         loss.backward()
-        encoder_optimizer.step()
         model_optimizer.step()
+        encoder_optimizer.step()
     return float(epoch_loss) / sum_examples, float(epoch_acc) / sum_examples, model
 
 
@@ -86,17 +86,17 @@ def iterate_model(model, encoder, train_set, dev_set, lr=0.01, epochs=10):
 
 
 def main():
-    train_parser = Parser('./Data/snli_1.0_train.jsonl')
+    train_parser = Parser('./Data/snli_1.0_train.jsonl', length=25)
     F2I = train_parser.get_F2I()
     L2I = train_parser.get_L2I()
-    dev_parser = Parser('./Data/snli_1.0_dev.jsonl', F2I, L2I)
-    test_parser = Parser('./Data/snli_1.0_test.jsonl', F2I, L2I)
-    embedding_dim = 300
-    hidden_dim = 1000
-    batch_size = 20
+    dev_parser = Parser('./Data/snli_1.0_dev.jsonl', F2I, L2I, length=25)
+    test_parser = Parser('./Data/snli_1.0_test.jsonl', F2I, L2I, length=25)
+    embedding_dim = 200
+    hidden_dim = 200
+    batch_size = 10
     output_dim = 3
     encoder = Encode(len(F2I), embedding_dim, hidden_dim)
-    model = SelfAttention(hidden_dim, output_dim, dropout_rate=0.2)
+    model = SelfAttention(hidden_dim, output_dim)
     iterate_model(model, encoder, train_parser.DataLoader(batch_size, shuffle=True),
                   dev_parser.DataLoader(batch_size, shuffle=True))
 
