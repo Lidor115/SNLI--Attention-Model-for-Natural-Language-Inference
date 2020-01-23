@@ -70,6 +70,7 @@ def evaluate(model, encoder, dev_set, loss_fn):
 
 
 def iterate_model(model, encoder, train_set, dev_set, lr=0.01, epochs=10):
+    print("hi")
     model_optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     encoder_optimizer = torch.optim.Adam(encoder.parameters(), lr=lr)
     loss = nn.CrossEntropyLoss()
@@ -90,8 +91,8 @@ def main():
     F2I = train_parser.get_F2I()
     L2I = train_parser.get_L2I()
     dev_parser = Parser('./Data/snli_1.0_dev.jsonl', F2I, L2I, length=25)
-    test_parser = Parser('./Data/snli_1.0_test.jsonl', F2I, L2I, length=25)
-    embedding_dim = 200
+    #test_parser = Parser('./Data/snli_1.0_test.jsonl', F2I, L2I, length=25)
+    embedding_dim = 300
     hidden_dim = 200
     batch_size = 10
     output_dim = 3
