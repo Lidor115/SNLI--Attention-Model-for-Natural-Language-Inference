@@ -1,4 +1,4 @@
-
+import numpy as np
 import torch
 import torch.nn as nn
 import time
@@ -36,32 +36,33 @@ def time_for_epoch(start, end):
     return minutes, seconds
 
 
-def train(model, encoder, train_set, model_optimizer, encoder_optimizer, loss_fn):
+def train(model, train_set, model_optimizer, loss_fn, I2F,F2I):
     epoch_loss = 0
     epoch_acc = 0
     sum_examples = len(train_set)
     model.train()
     for sentences, labels in train_set:
         model_optimizer.zero_grad()
-        encoder_optimizer.zero_grad()
-        encoded = encoder(sentences[0], sentences[1])
+        #encoder_optimizer.zero_grad()
+        print(sentences[0])
+        encoded = F2I[sentences[0]], F2I[sentences[1]]
         predictions = model(encoded[0], encoded[1])
         loss = loss_fn(predictions, labels)
         epoch_acc += calc_batch_accuracy(predictions, labels)
         epoch_loss += loss
         loss.backward()
         model_optimizer.step()
-        encoder_optimizer.step()
+        #encoder_optimizer.step()
     return float(epoch_loss) / sum_examples, float(epoch_acc) / sum_examples, model
 
 
-def evaluate(model, encoder, dev_set, loss_fn):
+def evaluate(model, dev_set, loss_fn,I2F,F2I):
     epoch_loss = 0
     epoch_acc = 0
     sum_examples = len(dev_set)
     model.eval()
     for sentences, labels in dev_set:
-        encoded = encoder(sentences[0], sentences[1])
+        encoded = F2I[sentences[0]], F2I[sentences[1]]
         predictions = model(encoded[0], encoded[1])
         loss = loss_fn(predictions, labels)
         epoch_acc += calc_batch_accuracy(predictions, labels)
@@ -69,15 +70,15 @@ def evaluate(model, encoder, dev_set, loss_fn):
     return float(epoch_loss) / sum_examples, float(epoch_acc) / sum_examples
 
 
-def iterate_model(model, encoder, train_set, dev_set, lr=0.01, epochs=10):
-    print("hi")
+def iterate_model(model, train_set, dev_set,I2F,F2I, lr=0.01, epochs=10):
+    print('hi')
     model_optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    encoder_optimizer = torch.optim.Adam(encoder.parameters(), lr=lr)
+    #encoder_optimizer = torch.optim.Adam(encoder.parameters(), lr=lr)
     loss = nn.CrossEntropyLoss()
     for epoch in range(epochs):
         start_time = time.time()
-        train_loss, train_acc, model = train(model, encoder, train_set, model_optimizer, encoder_optimizer, loss)
-        dev_loss, dev_acc = evaluate(model, encoder, dev_set, loss)
+        train_loss, train_acc, model = train(model, train_set, model_optimizer, loss,I2F,F2I)
+        dev_loss, dev_acc = evaluate(model, dev_set, loss,I2F,F2I)
         end_time = time.time()
         epoch_mins, epoch_secs = time_for_epoch(start_time, end_time)
         print(f'Epoch: {epoch + 1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
@@ -92,14 +93,16 @@ def main():
     L2I = train_parser.get_L2I()
     dev_parser = Parser('./Data/snli_1.0_dev.jsonl', F2I, L2I, length=25)
     #test_parser = Parser('./Data/snli_1.0_test.jsonl', F2I, L2I, length=25)
-    embedding_dim = 300
+    embedding_dim = 200
     hidden_dim = 200
     batch_size = 10
     output_dim = 3
-    encoder = Encode(len(F2I), embedding_dim, hidden_dim)
+    I2F = train_parser.get_glov_T()
+    F2I = train_parser.get_glov()
+    #encoder = Encode(len(F2I), embedding_dim, hidden_dim)
     model = SelfAttention(hidden_dim, output_dim)
-    iterate_model(model, encoder, train_parser.DataLoader(batch_size, shuffle=True),
-                  dev_parser.DataLoader(batch_size, shuffle=True))
+    iterate_model(model, train_parser.DataLoader(batch_size, shuffle=True),
+                  dev_parser.DataLoader(batch_size, shuffle=True),I2F,F2I)
 
 
 if __name__ == "__main__":

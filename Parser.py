@@ -15,25 +15,31 @@ class Parser:
 
     def __init__(self, filename, F2I={}, L2I={}, length=None):
         self.glov = {}
-        self.glov[UNIQUE] = np.zeros(300)
-        self.glove_dict()
+        self.glov_T ={}
+        self.glov[UNIQUE] = torch.from_numpy(np.zeros(300))
+        self.glov_dict()
+        temp = np.zeros(300)
+        self.glov_T[torch.from_numpy(temp)] = UNIQUE
         self.file_name = filename
         self.length = length
         vocab, self.sentences, self.labels, self.max_sentence = self.Parse()
         self.F2I = F2I if F2I else self.create_dict(vocab)
         self.L2I = L2I if L2I else self.create_dict(self.labels, should_pad=False)
-        self.indexer_glov()
+        #self.indexer_glov()
         self.indexer_labels()
         # self.indexer_sentences()
         self.sentence_padding()
 
-    def glove_dict(self):
+
+
+    def glov_dict(self):
         with open("./Data/glove.6B.300d.txt", 'r') as f:
             for line in f:
                 values = line.split()
                 word = values[0]
                 vector = np.asarray(values[1:], "float32")
-                self.glov[word] = vector
+                self.glov[word] = torch.from_numpy(vector)
+                self.glov_T[torch.from_numpy(vector)] = word
 
     def Parse(self):
         data = []
@@ -101,14 +107,17 @@ class Parser:
     def get_glov(self):
         return self.glov
 
+    def get_glov_T(self):
+        return self.glov_T
+
     def indexer_glov(self):
         for pair in self.sentences:
             for index, word in enumerate(pair[0]):
                 if pair[0][index] in self.glov:
-                    pair[0][index] = self.glov[word]
+                    pair[0][index] = np.asarray(self.glov[word])
             for index, word in enumerate(pair[1]):
                 if pair[1][index] in self.glov:
-                    pair[1][index] = self.glov[word]
+                    pair[1][index] = np.asarray(self.glov[word])
 
     def indexer_sentences(self):
         for pair in self.sentences:
@@ -127,8 +136,18 @@ class Parser:
         for index, label in enumerate(self.labels):
             self.labels[index] = self.L2I[label]
 
+    # def sentence_padding(self):
+    #     word_index = self.glov[UNIQUE]
+    #     for pair in self.sentences:
+    #         while len(pair[0]) < self.max_sentence:
+    #             pair[0].append(word_index)
+    #         while len(pair[1]) < self.max_sentence:
+    #             pair[1].append(word_index)
+    #     if self.length is not None:
+    #         for index, pair in enumerate(self.sentences):
+    #             self.sentences[index] = [pair[0][:self.length], pair[1][:self.length]]
     def sentence_padding(self):
-        word_index = self.glov[UNIQUE]
+        word_index = UNIQUE
         for pair in self.sentences:
             while len(pair[0]) < self.max_sentence:
                 pair[0].append(word_index)
@@ -151,8 +170,9 @@ class Parser:
                         self.labels[-(len(self.labels) % batch_size):]))
 
         for index, batch in enumerate(batchs):
-          #batchs[index] = ((torch.LongTensor(np.asarray(batch[0][0])), torch.LongTensor(np.asarray(batch[0][1]))), torch.LongTensor(np.asarray(batch[1])))
-          batchs[index] = ((torch.LongTensor(np.asarray(batch[0][0])), torch.LongTensor(np.asarray(batch[0][1]))),
-                           torch.LongTensor(np.asarray(batch[1])))
+          if (len(batch[0]) == 10):
+              batchs[index] = ((torch.LongTensor(np.asarray(batch[0][0])), torch.LongTensor(np.asarray(batch[0][1]))), torch.LongTensor(np.asarray(batch[1])))
+          # batchs[index] = (torch.LongTensor(batch[0]),
+          #                  torch.LongTensor(np.asarray(batch[1])))
 
         return batchs
