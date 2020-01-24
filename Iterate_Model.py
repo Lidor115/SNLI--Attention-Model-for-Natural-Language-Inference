@@ -35,6 +35,22 @@ def time_for_epoch(start, end):
     seconds = int(end_to_end - (minutes * 60))
     return minutes, seconds
 
+def encoded_sentences(sentences, F2I):
+    index_sent = 0
+    sentences_ret = []
+    for sent in sentences:
+        sentence=[]
+        index_word =0
+        for word in sent:
+            sentence.append(F2I[word].reshape(1,-1))
+            index_word +=1
+        sentence = torch.cat(sentence)
+        sentence =(sentence).reshape(1,sentence.shape[0], sentence.shape[1])
+        sentences_ret.append(sentence)
+        index_sent+=1
+    return torch.cat(sentences_ret)
+
+
 
 def train(model, train_set, model_optimizer, loss_fn, I2F,F2I):
     epoch_loss = 0
@@ -44,10 +60,10 @@ def train(model, train_set, model_optimizer, loss_fn, I2F,F2I):
     for sentences, labels in train_set:
         model_optimizer.zero_grad()
         #encoder_optimizer.zero_grad()
-        print(sentences[0])
-        encoded = F2I[sentences[0]], F2I[sentences[1]]
-        predictions = model(encoded[0], encoded[1])
-        loss = loss_fn(predictions, labels)
+        encoded_0 = (encoded_sentences(sentences[0],F2I))
+        encoded_1 = (encoded_sentences(sentences[1],F2I))
+        predictions = model(encoded_0,encoded_1)
+        loss = loss_fn(predictions, torch.LongTensor(labels))
         epoch_acc += calc_batch_accuracy(predictions, labels)
         epoch_loss += loss
         loss.backward()
@@ -62,9 +78,10 @@ def evaluate(model, dev_set, loss_fn,I2F,F2I):
     sum_examples = len(dev_set)
     model.eval()
     for sentences, labels in dev_set:
-        encoded = F2I[sentences[0]], F2I[sentences[1]]
-        predictions = model(encoded[0], encoded[1])
-        loss = loss_fn(predictions, labels)
+        encoded_0 = (encoded_sentences(sentences[0],F2I))
+        encoded_1 = (encoded_sentences(sentences[1],F2I))
+        predictions = model(encoded_0,encoded_1)
+        loss = loss_fn(predictions, torch.LongTensor(labels))
         epoch_acc += calc_batch_accuracy(predictions, labels)
         epoch_loss += loss
     return float(epoch_loss) / sum_examples, float(epoch_acc) / sum_examples
@@ -93,14 +110,14 @@ def main():
     L2I = train_parser.get_L2I()
     dev_parser = Parser('./Data/snli_1.0_dev.jsonl', F2I, L2I, length=25)
     #test_parser = Parser('./Data/snli_1.0_test.jsonl', F2I, L2I, length=25)
-    embedding_dim = 200
+    embedding_dim = 300
     hidden_dim = 200
     batch_size = 10
     output_dim = 3
     I2F = train_parser.get_glov_T()
     F2I = train_parser.get_glov()
     #encoder = Encode(len(F2I), embedding_dim, hidden_dim)
-    model = SelfAttention(hidden_dim, output_dim)
+    model = SelfAttention(embedding_dim,hidden_dim, output_dim)
     iterate_model(model, train_parser.DataLoader(batch_size, shuffle=True),
                   dev_parser.DataLoader(batch_size, shuffle=True),I2F,F2I)
 

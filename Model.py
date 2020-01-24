@@ -24,12 +24,13 @@ class Encode(nn.Module):
 
 
 class SelfAttention(nn.Module):
-    def __init__(self, hidden_dim, output_dim, dropout_rate=0.0):
+    def __init__(self,embedding_dim, hidden_dim, output_dim, dropout_rate=0.0):
         super(SelfAttention, self).__init__()
         self.hidden_dim = hidden_dim
         self.F = self.mlp(hidden_dim, hidden_dim, dropout_rate)
         self.G = self.mlp(hidden_dim * 2, hidden_dim, dropout_rate)
         self.H = self.mlp(hidden_dim * 2, hidden_dim, dropout_rate)
+        self.embed = nn.Linear(embedding_dim, hidden_dim)
         self.output = nn.Linear(hidden_dim, output_dim)
         self.softmax = nn.LogSoftmax(dim=1)
 
@@ -44,6 +45,9 @@ class SelfAttention(nn.Module):
         )
 
     def forward(self, a, b):
+        batch_size = a.shape[0]
+        a= self.embed(a).view(batch_size,-1,self.hidden_dim)
+        b= self.embed(b).view(batch_size,-1,self.hidden_dim)
         l_a = a.shape[1]
         l_b = b.shape[1]
 

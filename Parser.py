@@ -17,6 +17,7 @@ class Parser:
         self.glov = {}
         self.glov_T ={}
         self.glov[UNIQUE] = torch.from_numpy(np.zeros(300))
+        self.glov[UNIQUE] = self.glov[UNIQUE].type(torch.float)
         self.glov_dict()
         temp = np.zeros(300)
         self.glov_T[torch.from_numpy(temp)] = UNIQUE
@@ -39,6 +40,7 @@ class Parser:
                 word = values[0]
                 vector = np.asarray(values[1:], "float32")
                 self.glov[word] = torch.from_numpy(vector)
+                self.glov[word] = self.glov[word].type(torch.float)
                 self.glov_T[torch.from_numpy(vector)] = word
 
     def Parse(self):
