@@ -8,7 +8,6 @@ import torch
 
 PAD = '<pad>'
 UNIQUE = '<unk>'
-NUMBER = '<num>'  # just prepare if need to parse by words
 
 
 class Parser:
@@ -138,16 +137,6 @@ class Parser:
         for index, label in enumerate(self.labels):
             self.labels[index] = self.L2I[label]
 
-    # def sentence_padding(self):
-    #     word_index = self.glov[UNIQUE]
-    #     for pair in self.sentences:
-    #         while len(pair[0]) < self.max_sentence:
-    #             pair[0].append(word_index)
-    #         while len(pair[1]) < self.max_sentence:
-    #             pair[1].append(word_index)
-    #     if self.length is not None:
-    #         for index, pair in enumerate(self.sentences):
-    #             self.sentences[index] = [pair[0][:self.length], pair[1][:self.length]]
     def sentence_padding(self):
         word_index = UNIQUE
         for pair in self.sentences:
@@ -172,9 +161,7 @@ class Parser:
                         self.labels[-(len(self.labels) % batch_size):]))
 
         for index, batch in enumerate(batchs):
-          if (len(batch[0]) == 10):
+          if (len(batch[0]) == 4):
               batchs[index] = ((torch.LongTensor(np.asarray(batch[0][0])), torch.LongTensor(np.asarray(batch[0][1]))), torch.LongTensor(np.asarray(batch[1])))
-          # batchs[index] = (torch.LongTensor(batch[0]),
-          #                  torch.LongTensor(np.asarray(batch[1])))
 
         return batchs

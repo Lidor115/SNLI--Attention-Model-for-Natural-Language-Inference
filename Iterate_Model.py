@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import time
+
 from Model import Encode, SelfAttention
 from Parser import Parser, UNIQUE
 
@@ -17,7 +18,7 @@ def calc_batch_accuracy(predictions, labels):
 
 
 def predict(model, windows, file_type, L2I, msg):
-    with open('./data/test_{0}.txt'.format(msg), mode='w') as file:
+    with open('./Data/test_{0}.txt'.format(msg), mode='w') as file:
         predictions = list()
         for window in windows:
             y = model(window[0])
@@ -55,27 +56,30 @@ def encoded_sentences(sentences, F2I):
 
 
 
-def train(model, train_set, model_optimizer, loss_fn, I2F,F2I):
+def train(encoder,model, train_set, model_optimizer,encoder_optimizer, loss_fn, I2F,F2I):
     epoch_loss = 0
     epoch_acc = 0
     sum_examples = len(train_set)
     model.train()
     for sentences, labels in train_set:
         model_optimizer.zero_grad()
-        #encoder_optimizer.zero_grad()
+        encoder_optimizer.zero_grad()
         encoded_0 = (encoded_sentences(sentences[0],F2I))
         encoded_1 = (encoded_sentences(sentences[1],F2I))
+        encoded_0, encoded_1 =encoder(encoded_0,encoded_1)
         predictions = model(encoded_0,encoded_1)
         loss = loss_fn(predictions, torch.LongTensor(labels))
+        print("after loss")
+
         epoch_acc += calc_batch_accuracy(predictions, labels)
         epoch_loss += loss
         loss.backward()
         model_optimizer.step()
-        #encoder_optimizer.step()
+        encoder_optimizer.step()
     return float(epoch_loss) / sum_examples, float(epoch_acc) / sum_examples, model
 
 
-def evaluate(model, dev_set, loss_fn,I2F,F2I):
+def evaluate(encoder,model, dev_set, loss_fn,I2F,F2I):
     epoch_loss = 0
     epoch_acc = 0
     sum_examples = len(dev_set)
@@ -83,6 +87,7 @@ def evaluate(model, dev_set, loss_fn,I2F,F2I):
     for sentences, labels in dev_set:
         encoded_0 = (encoded_sentences(sentences[0],F2I))
         encoded_1 = (encoded_sentences(sentences[1],F2I))
+        encoded_0, encoded_1 =encoder(encoded_0,encoded_1)
         predictions = model(encoded_0,encoded_1)
         loss = loss_fn(predictions, torch.LongTensor(labels))
         epoch_acc += calc_batch_accuracy(predictions, labels)
@@ -90,15 +95,15 @@ def evaluate(model, dev_set, loss_fn,I2F,F2I):
     return float(epoch_loss) / sum_examples, float(epoch_acc) / sum_examples
 
 
-def iterate_model(model, train_set, dev_set,I2F,F2I, lr=0.01, epochs=10):
+def iterate_model(encoder,model, train_set, dev_set,I2F,F2I, lr=0.001, epochs=10):
     print('hi')
     model_optimizer = torch.optim.Adagrad(model.parameters(), lr=lr)
-    #encoder_optimizer = torch.optim.Adam(encoder.parameters(), lr=lr)
+    encoder_optimizer = torch.optim.Adagrad(encoder.parameters(), lr=0.05)
     loss = nn.CrossEntropyLoss()
     for epoch in range(epochs):
         start_time = time.time()
-        train_loss, train_acc, model = train(model, train_set, model_optimizer, loss,I2F,F2I)
-        dev_loss, dev_acc = evaluate(model, dev_set, loss,I2F,F2I)
+        train_loss, train_acc, model = train(encoder,model, train_set, model_optimizer,encoder_optimizer, loss,I2F,F2I)
+        dev_loss, dev_acc = evaluate(encoder,model, dev_set, loss,I2F,F2I)
         end_time = time.time()
         epoch_mins, epoch_secs = time_for_epoch(start_time, end_time)
         print(f'Epoch: {epoch + 1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
@@ -108,20 +113,20 @@ def iterate_model(model, train_set, dev_set,I2F,F2I, lr=0.01, epochs=10):
 
 
 def main():
-    train_parser = Parser('./Data/snli_1.0_train.jsonl', length=25)
+    train_parser = Parser('./Data/snli_1.0/snli_1.0_train.jsonl', length=25)
     F2I = train_parser.get_F2I()
     L2I = train_parser.get_L2I()
-    dev_parser = Parser('./Data/snli_1.0_dev.jsonl', F2I, L2I, length=25)
-    #test_parser = Parser('./Data/snli_1.0_test.jsonl', F2I, L2I, length=25)
+    dev_parser = Parser('./Data/snli_1.0/snli_1.0_dev.jsonl', F2I, L2I, length=25)
+    #test_parser = Parser('./Data/snli_1.0/snli_1.0_test.jsonl', F2I, L2I, length=25)
     embedding_dim = 300
-    hidden_dim = 200
-    batch_size = 10
+    hidden_dim = 400
+    batch_size = 4
     output_dim = 3
     I2F = train_parser.get_glov_T()
     F2I = train_parser.get_glov()
-    #encoder = Encode(len(F2I), embedding_dim, hidden_dim)
+    encoder = Encode(embedding_dim, hidden_dim)
     model = SelfAttention(embedding_dim,hidden_dim, output_dim)
-    iterate_model(model, train_parser.DataLoader(batch_size, shuffle=True),
+    iterate_model(encoder,model, train_parser.DataLoader(batch_size, shuffle=True),
                   dev_parser.DataLoader(batch_size, shuffle=True),I2F,F2I)
 
 
