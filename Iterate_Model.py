@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import time
 from Model import Encode, SelfAttention
-from Parser import Parser
+from Parser import Parser, UNIQUE
 
 
 def calc_batch_accuracy(predictions, labels):
@@ -42,7 +42,10 @@ def encoded_sentences(sentences, F2I):
         sentence=[]
         index_word =0
         for word in sent:
-            sentence.append(F2I[word].reshape(1,-1))
+            if word in F2I:
+              sentence.append(F2I[word].reshape(1,-1))
+            else:
+              sentence.append(F2I[UNIQUE].reshape(1,-1))
             index_word +=1
         sentence = torch.cat(sentence)
         sentence =(sentence).reshape(1,sentence.shape[0], sentence.shape[1])
@@ -89,7 +92,7 @@ def evaluate(model, dev_set, loss_fn,I2F,F2I):
 
 def iterate_model(model, train_set, dev_set,I2F,F2I, lr=0.01, epochs=10):
     print('hi')
-    model_optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    model_optimizer = torch.optim.Adagrad(model.parameters(), lr=lr)
     #encoder_optimizer = torch.optim.Adam(encoder.parameters(), lr=lr)
     loss = nn.CrossEntropyLoss()
     for epoch in range(epochs):
