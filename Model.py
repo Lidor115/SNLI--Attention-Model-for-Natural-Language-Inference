@@ -7,7 +7,6 @@ class Encode(nn.Module):
     def __init__(self, embedding_dim, hidden_dim):
         super(Encode, self).__init__()
         self.mlp = nn.Linear(embedding_dim, hidden_dim)
-        self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
 
     def view(self, sentence, batch_size):
@@ -25,9 +24,6 @@ class SelfAttention(nn.Module):
         self.F = self.mlp(hidden_dim, hidden_dim, dropout_rate)
         self.G = self.mlp(hidden_dim * 2, hidden_dim, dropout_rate)
         self.H = self.mlp(hidden_dim * 2, hidden_dim, dropout_rate)
-        torch.manual_seed(3)
-        self.embed = nn.Linear(embedding_dim, hidden_dim)
-        nn.init.uniform_(self.embed.weight, -1.0, 1.0)
         self.output = nn.Linear(hidden_dim, output_dim)
         self.softmax = nn.LogSoftmax(dim=1)
 
@@ -42,33 +38,43 @@ class SelfAttention(nn.Module):
         )
 
     def forward(self, a, b):
-        l_a = a.shape[1]
-        l_b = b.shape[1]
-
+        a_size = a.shape[1]
+        b_size = b.shape[1]
+        # Attend
+        # Unnormalized attention weights a = F(a), b = F(b), e = F(a) * Ft(b)
         a = self.F(a.view(-1, self.hidden_dim))
-        a = a.view(-1, l_a, self.hidden_dim)
+        a = a.view(-1, a_size, self.hidden_dim)
         b = self.F(b.view(-1, self.hidden_dim))
-        b = b.view(-1, l_b, self.hidden_dim)
+        b = b.view(-1, b_size, self.hidden_dim)
 
         e = torch.bmm(a, torch.transpose(b, 1, 2))
 
+        # normalize attention weights (alpha and beta from the paper)
         beta = torch.bmm(F.softmax(e, dim=2), b)
         alpha = torch.bmm(F.softmax(torch.transpose(e, 1, 2), dim=2), a)
 
+        # Compare
+        # concat a with beta, b with alpha and feed through G
         a_cat_beta = torch.cat((a, beta), dim=2)
         b_cat_alpha = torch.cat((b, alpha), dim=2)
         v1 = self.G(a_cat_beta.view(-1, 2 * self.hidden_dim))
         v2 = self.G(b_cat_alpha.view(-1, 2 * self.hidden_dim))
 
-        v1 = torch.sum(v1.view(-1, l_a, self.hidden_dim), dim=1)
-        v2 = torch.sum(v2.view(-1, l_b, self.hidden_dim), dim=1)
+        # Aggregate
+        # Sum over each value from the comparison (reducing dimension back to hidden_dim)
+        # Feed through the final mlp
+        v1 = torch.sum(v1.view(-1, a_size, self.hidden_dim), dim=1)
+        v2 = torch.sum(v2.view(-1, b_size, self.hidden_dim), dim=1)
 
         v1 = torch.squeeze(v1, dim=1)
         v2 = torch.squeeze(v2, dim=1)
 
         v1_cat_v2 = torch.cat((v1, v2), dim=1)
         h = self.H(v1_cat_v2)
-
+        
+        # This two phases are not done in the paper, it worked for us.
+        # flat h to the output's dimension (number of labels)
         out = self.output(h)
 
+        # normalize results
         return self.softmax(out)
