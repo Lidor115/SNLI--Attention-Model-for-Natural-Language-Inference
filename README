@@ -1,0 +1,5 @@
+First , download the data:
+python downloads.py
+
+For run our best model:
+python main.py

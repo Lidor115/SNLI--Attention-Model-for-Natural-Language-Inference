@@ -69,7 +69,6 @@ def train(encoder,model, train_set, model_optimizer,encoder_optimizer, loss_fn, 
         encoded_0, encoded_1 =encoder(encoded_0,encoded_1)
         predictions = model(encoded_0,encoded_1)
         loss = loss_fn(predictions, torch.LongTensor(labels))
-        print("after loss")
 
         epoch_acc += calc_batch_accuracy(predictions, labels)
         epoch_loss += loss
